@@ -19,25 +19,28 @@ Three NUCs (`nuc-01`, `nuc-02`, `nuc-03`) form the Harvester HCI cluster. They a
 
 ## Per-Node Config Files
 
-Create one config file per node in `/var/www/html/harvester/`:
+Create one config file per node in `/var/www/html/harvester/`. Config files follow the naming convention used in the enclave repo: `config-create-nuc-01.yaml`, `config-join-nuc-02.yaml`, etc.
 
-### `config-nuc-01.yaml` (First Node — Creates Cluster)
+### `config-create-nuc-01.yaml` (First Node — Creates Cluster)
 
 ```yaml
 scheme_version: 1
 
 server_url: ""  # empty = this is the first/create node
 
-token: "enclave-harvester-token"
+token: "KentuckyHarvester"
 
 os:
   hostname: nuc-01
   password: "$6$rounds=4096$SALTSALT$HASHEDPASSWORD"  # openssl passwd -6
   ntp_servers:
-    - 0.pool.ntp.org
-    - 1.pool.ntp.org
+    - 0.suse.pool.ntp.org
+    - 1.suse.pool.ntp.org
+    - 2.suse.pool.ntp.org
   dns_nameservers:
-    - 192.168.100.21
+    - 10.10.12.9
+    - 10.10.12.8
+    - 8.8.8.8
   ssh_authorized_keys:
     - "ssh-ed25519 AAAAC3... enclave-admin"
 
@@ -45,36 +48,40 @@ install:
   mode: create
   management_interface:
     interfaces:
-      - name: eth0
+      - name: enp86s0
     method: static
-    ip: 192.168.100.11
-    subnet_mask: 255.255.255.0
-    gateway: 192.168.100.1
+    ip: 10.10.12.101
+    subnet_mask: 255.255.252.0
+    gateway: 10.10.12.1
     mtu: 1500
-  device: /dev/nvme0n1
-  vip: 192.168.100.60
+  device: /dev/sda
+  vip: 10.10.12.100
   vip_mode: static
 
 system_settings:
-  auto-disk-provision-paths: "/dev/nvme1n1"  # secondary NVMe for Longhorn
+  auto-disk-provision-paths: "/dev/nvme0n1"  # secondary NVMe for Longhorn
 ```
 
-### `config-nuc-02.yaml` (Join Node)
+### `config-join-nuc-02.yaml` (Join Node)
 
 ```yaml
 scheme_version: 1
 
-server_url: "https://192.168.100.60"  # VIP of first node
+server_url: "https://10.10.12.100"  # Harvester VIP of first node
 
-token: "enclave-harvester-token"
+token: "KentuckyHarvester"
 
 os:
   hostname: nuc-02
   password: "$6$rounds=4096$SALTSALT$HASHEDPASSWORD"
   ntp_servers:
-    - 0.pool.ntp.org
+    - 0.suse.pool.ntp.org
+    - 1.suse.pool.ntp.org
+    - 2.suse.pool.ntp.org
   dns_nameservers:
-    - 192.168.100.21
+    - 10.10.12.9
+    - 10.10.12.8
+    - 8.8.8.8
   ssh_authorized_keys:
     - "ssh-ed25519 AAAAC3... enclave-admin"
 
@@ -82,19 +89,19 @@ install:
   mode: join
   management_interface:
     interfaces:
-      - name: eth0
+      - name: enp86s0
     method: static
-    ip: 192.168.100.12
-    subnet_mask: 255.255.255.0
-    gateway: 192.168.100.1
+    ip: 10.10.12.102
+    subnet_mask: 255.255.252.0
+    gateway: 10.10.12.1
     mtu: 1500
-  device: /dev/nvme0n1
+  device: /dev/sda
 
 system_settings:
-  auto-disk-provision-paths: "/dev/nvme1n1"
+  auto-disk-provision-paths: "/dev/nvme0n1"
 ```
 
-`config-nuc-03.yaml` follows the same pattern as `nuc-02` with IP `192.168.100.13`.
+`config-join-nuc-03.yaml` follows the same pattern as `nuc-02` with hostname `nuc-03` and IP `10.10.12.103`.
 
 ### Generate Hashed Password
 
@@ -104,7 +111,7 @@ openssl passwd -6 'YourSecurePassword'
 
 ## Installation Sequence
 
-**Critical:** Install nodes in order. `nuc-01` must complete and the Harvester VIP (`192.168.100.60`) must be reachable before starting `nuc-02` and `nuc-03`.
+**Critical:** Install nodes in order. `nuc-01` must complete and the Harvester VIP (`10.10.12.100`) must be reachable before starting `nuc-02` and `nuc-03`.
 
 ### Step 1: Boot nuc-01
 
@@ -115,9 +122,6 @@ Monitor installation progress from `nuc-00`:
 ```bash
 # Watch Apache access log
 tail -f /var/log/httpd/access_log | grep nuc-01
-
-# Or watch directly via console
-virsh console nuc-01  # not applicable here (bare metal), use physical display
 ```
 
 Installation takes 10–15 minutes. The node reboots twice.
@@ -126,11 +130,11 @@ Installation takes 10–15 minutes. The node reboots twice.
 
 ```bash
 # Harvester API should respond at VIP
-curl -k https://192.168.100.60/ping
+curl -k https://10.10.12.100/ping
 # Expected: "pong"
 
 # SSH to node
-ssh rancher@192.168.100.11
+ssh rancher@10.10.12.101
 
 # Check Harvester cluster health
 kubectl get nodes --kubeconfig /etc/rancher/k3s/k3s.yaml
@@ -154,10 +158,10 @@ Allow 15–20 minutes for both nodes to join.
 
 ```bash
 # Copy Harvester kubeconfig to your workstation
-scp rancher@192.168.100.60:/etc/rancher/k3s/k3s.yaml ~/.kube/harvester-config
+scp rancher@10.10.12.100:/etc/rancher/k3s/k3s.yaml ~/.kube/harvester-config
 
 # Update server address in kubeconfig (replace 127.0.0.1 with VIP)
-sed -i 's|https://127.0.0.1:6443|https://192.168.100.60:6443|g' ~/.kube/harvester-config
+sed -i 's|https://127.0.0.1:6443|https://10.10.12.100:6443|g' ~/.kube/harvester-config
 
 # Verify
 kubectl --kubeconfig ~/.kube/harvester-config get nodes
@@ -170,9 +174,9 @@ kubectl --kubeconfig ~/.kube/harvester-config get nodes
 kubectl get nodes -o wide
 # Expected:
 # NAME    STATUS   ROLES                  AGE   VERSION
-# nuc-01  Ready    control-plane,master   ...   v1.27.x
-# nuc-02  Ready    control-plane,master   ...   v1.27.x
-# nuc-03  Ready    control-plane,master   ...   v1.27.x
+# nuc-01  Ready    control-plane,master   ...   v1.x.x
+# nuc-02  Ready    control-plane,master   ...   v1.x.x
+# nuc-03  Ready    control-plane,master   ...   v1.x.x
 
 # Longhorn storage (may take a few minutes to appear)
 kubectl get sc
@@ -182,18 +186,18 @@ kubectl get sc
 kubectl get pods -n longhorn-system
 
 # Harvester UI accessible
-open https://192.168.100.60
+open https://10.10.12.100
 ```
 
 Login to the Harvester UI with the password set in the config files.
 
 ## Post-Install: Add Longhorn Disks
 
-If secondary NVMe was not automatically provisioned:
+If the secondary NVMe (`/dev/nvme0n1`) was not automatically provisioned:
 
 1. Navigate to Harvester UI → **Host** → select a node
 2. Click **Edit** → **Storage**
-3. Add `/dev/nvme1n1` as a data disk
+3. Add `/dev/nvme0n1` as a data disk
 4. Repeat for all nodes
 
 Longhorn will format and add these disks to its storage pool.

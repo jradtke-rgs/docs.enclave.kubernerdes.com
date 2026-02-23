@@ -12,21 +12,23 @@ sidebar_position: 4
 When something isn't working, run through these in order:
 
 ```bash
-# 1. Are all nodes up?
+# 1. Are all Harvester nodes up?
 kubectl get nodes
 
 # 2. Are all pods running?
 kubectl get pods -A | grep -Ev "Running|Completed"
 
-# 3. Is the VIP responding?
-curl -k https://192.168.100.60/ping  # Harvester
-curl -k https://192.168.100.50/ping  # Rancher
+# 3. Is the Harvester VIP responding?
+curl -k https://10.10.12.100/ping  # Harvester
 
-# 4. Is DNS working?
-dig @192.168.100.21 rancher.kubernerdes.com
+# 4. Is the Rancher VIP responding?
+curl -k https://10.10.12.210/ping  # Rancher
 
-# 5. Is HAProxy healthy?
-curl http://192.168.100.22:9000/stats | grep -E "UP|DOWN"
+# 5. Is DNS working?
+dig @10.10.12.8 rancher.enclave.kubernerdes.com
+
+# 6. Is HAProxy healthy?
+curl http://10.10.12.93:9000/stats | grep -E "UP|DOWN"
 ```
 
 ---
@@ -35,25 +37,25 @@ curl http://192.168.100.22:9000/stats | grep -E "UP|DOWN"
 
 ### VIP Not Reachable
 
-**Symptom:** `curl https://192.168.100.50` times out.
+**Symptom:** `curl https://10.10.12.210` times out.
 
 ```bash
-# Check if VIP is assigned on infra-02
-ssh rke@192.168.100.22 "ip addr show | grep 192.168.100.50"
+# Check if VIP is assigned on nuc-00-03
+ssh mansible@10.10.12.93 "ip addr show | grep 10.10.12.210"
 
 # If not assigned, Keepalived may have stopped
-ssh rke@192.168.100.22 "systemctl status keepalived"
-ssh rke@192.168.100.22 "journalctl -u keepalived --since '10 min ago'"
+ssh mansible@10.10.12.93 "systemctl status keepalived"
+ssh mansible@10.10.12.93 "journalctl -u keepalived --since '10 min ago'"
 
 # Restart Keepalived
-ssh rke@192.168.100.22 "systemctl restart keepalived"
+ssh mansible@10.10.12.93 "systemctl restart keepalived"
 ```
 
 If Keepalived is running but VIP is still missing, check for IP conflicts:
 
 ```bash
 # ARP scan for the VIP address
-arping -I eth0 192.168.100.50
+arping -I eth0 10.10.12.210
 ```
 
 ### HAProxy Backend Down
@@ -62,30 +64,33 @@ arping -I eth0 192.168.100.50
 
 ```bash
 # Check HAProxy logs
-ssh rke@192.168.100.22 "journalctl -u haproxy --since '30 min ago'"
+ssh mansible@10.10.12.93 "journalctl -u haproxy --since '30 min ago'"
 
-# Manually test backend connectivity from infra-02
-ssh rke@192.168.100.22 "curl -k https://192.168.100.11:443/ping"
+# Manually test backend connectivity from nuc-00-03
+ssh mansible@10.10.12.93 "curl -k https://10.10.12.211:443/ping"
 ```
 
-If a Harvester node backend is down, check if the node is up:
+If a Rancher node backend is down, check if the node is up:
 
 ```bash
-ping 192.168.100.11
-ssh rancher@192.168.100.11 "systemctl status k3s"
+ping 10.10.12.211
+ssh mansible@10.10.12.211 "systemctl status k3s"
 ```
 
 ### DNS Not Resolving
 
 ```bash
-# Test DNS directly against infra-01
-dig @192.168.100.21 nuc-01.kubernerdes.com
+# Test DNS directly against nuc-00-01
+dig @10.10.12.8 nuc-01.enclave.kubernerdes.com
 
 # Check BIND logs
-ssh rke@192.168.100.21 "journalctl -u named --since '10 min ago'"
+ssh mansible@10.10.12.8 "journalctl -u named --since '10 min ago'"
 
 # Reload zone after editing zone file
-ssh rke@192.168.100.21 "named-checkzone kubernerdes.com /var/named/kubernerdes.com.zone && rndc reload"
+ssh mansible@10.10.12.8 "named-checkzone enclave.kubernerdes.com /var/lib/named/master/db.enclave.kubernerdes.com && rndc reload"
+
+# Verify secondary DNS has synced
+dig @10.10.12.9 nuc-01.enclave.kubernerdes.com
 ```
 
 ---
@@ -99,11 +104,11 @@ ssh rke@192.168.100.21 "named-checkzone kubernerdes.com /var/named/kubernerdes.c
 kubectl describe node nuc-02
 
 # Check k3s on the affected node
-ssh rancher@192.168.100.12 "systemctl status k3s"
-ssh rancher@192.168.100.12 "journalctl -u k3s --since '15 min ago' | tail -50"
+ssh rancher@10.10.12.102 "systemctl status k3s"
+ssh rancher@10.10.12.102 "journalctl -u k3s --since '15 min ago' | tail -50"
 
 # Common fix: restart k3s
-ssh rancher@192.168.100.12 "systemctl restart k3s"
+ssh rancher@10.10.12.102 "systemctl restart k3s"
 ```
 
 ### Longhorn Volume Degraded
@@ -130,7 +135,7 @@ Common causes:
 
 ```bash
 # Check etcd members
-ssh rancher@192.168.100.11
+ssh rancher@10.10.12.101
 kubectl get pods -n kube-system | grep etcd
 
 # Check etcd logs
@@ -170,6 +175,18 @@ Common causes:
 - K3s node out of memory → check `kubectl top nodes`
 - Rancher DB corrupted → restore from etcd snapshot
 
+### K3s Node Not Joining Rancher Cluster
+
+```bash
+# Check K3s status on the failing node
+ssh mansible@10.10.12.212 "systemctl status k3s"
+ssh mansible@10.10.12.212 "journalctl -u k3s --since '15 min ago' | tail -50"
+
+# Verify the VIP is reachable from that node
+ssh mansible@10.10.12.212 "ping -c 3 10.10.12.210"
+ssh mansible@10.10.12.212 "curl -k https://10.10.12.211:6443"
+```
+
 ### Rancher Cannot Connect to Harvester
 
 In Rancher UI, the imported Harvester cluster shows "Unavailable":
@@ -181,7 +198,7 @@ kubectl logs -n cattle-system -l app=cattle-cluster-agent
 
 # Verify Rancher URL is reachable from Harvester nodes
 kubectl exec -n cattle-system deploy/cattle-cluster-agent -- \
-  curl -k https://192.168.100.50/ping
+  curl -k https://10.10.12.210/ping
 ```
 
 ---
@@ -205,7 +222,7 @@ kubectl --kubeconfig ~/.kube/rancher-k3s-config \
 ```
 
 For Let's Encrypt certificates, verify:
-1. DNS resolves `rancher.kubernerdes.com` to a publicly routable IP (not 192.168.100.50)
+1. DNS resolves `rancher.enclave.kubernerdes.com` to a publicly routable IP (not `10.10.12.210`)
 2. Port 80 is open for ACME HTTP-01 challenge
 
 For air-gapped deployments with self-signed certs, use `ingress.tls.source=secret`:
@@ -213,8 +230,8 @@ For air-gapped deployments with self-signed certs, use `ingress.tls.source=secre
 ```bash
 # Create a self-signed cert
 openssl req -x509 -newkey rsa:4096 -keyout tls.key -out tls.crt \
-  -days 365 -nodes -subj "/CN=rancher.kubernerdes.com" \
-  -addext "subjectAltName=DNS:rancher.kubernerdes.com,IP:192.168.100.50"
+  -days 365 -nodes -subj "/CN=rancher.enclave.kubernerdes.com" \
+  -addext "subjectAltName=DNS:rancher.enclave.kubernerdes.com,IP:10.10.12.210"
 
 kubectl --kubeconfig ~/.kube/rancher-k3s-config \
   create secret tls tls-rancher-ingress \
@@ -244,23 +261,23 @@ kubectl --kubeconfig ~/.kube/rancher-k3s-config \
 ### Harvester Node Fails to PXE Boot
 
 ```bash
-# Check DHCP leases on infra-01
-ssh rke@192.168.100.21 "cat /var/lib/dhcpd/dhcpd.leases | grep -A5 <MAC>"
+# Check DHCP leases on nuc-00-01
+ssh mansible@10.10.12.8 "cat /var/lib/dhcpd/dhcpd.leases | grep -A5 <MAC>"
 
 # Verify TFTP is serving
-tftp 192.168.100.10 -c get pxelinux.0
+tftp 10.10.12.10 -c get pxelinux.0
 
 # Check Apache is serving Harvester files
-curl http://192.168.100.10/harvester/
+curl http://10.10.12.10/harvester/
 
 # Check firewall on nuc-00
 firewall-cmd --list-all | grep -E "tftp|http"
 ```
 
 Common fixes:
-- Verify the NUC's MAC address matches the DHCP static lease
+- Verify the NUC's MAC address matches the DHCP static lease in `/etc/dhcp/dhcpd.conf`
 - Confirm BIOS boot order: Network first, Secure Boot disabled
-- Check `next-server` in dhcpd.conf points to `192.168.100.10`
+- Check `next-server` in dhcpd.conf points to `10.10.12.10`
 
 ---
 

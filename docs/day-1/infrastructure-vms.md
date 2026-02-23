@@ -7,45 +7,60 @@ sidebar_position: 3
 
 # Infrastructure VMs
 
-Two VMs run on `nuc-00` providing shared infrastructure services:
+Three VMs run on `nuc-00` providing shared infrastructure services:
 
 | VM | IP | Services |
 |----|-----|---------|
-| `infra-01` | `192.168.100.21` | ISC DHCP, BIND DNS |
-| `infra-02` | `192.168.100.22` | HAProxy, Keepalived |
+| `nuc-00-01` | `10.10.12.8` | ISC DHCP, BIND DNS (primary) |
+| `nuc-00-02` | `10.10.12.9` | BIND DNS (secondary) |
+| `nuc-00-03` | `10.10.12.93` | HAProxy, Keepalived |
 
-Both VMs run Rocky Linux 9 minimal.
+All VMs run Rocky Linux 9 minimal.
 
 ## Creating the VMs
 
 Use `virt-install` on `nuc-00`:
 
 ```bash
-# infra-01
+# nuc-00-01
 virt-install \
-  --name infra-01 \
-  --vcpus 2 \
+  --name nuc-00-01 \
+  --vcpus 4 \
   --memory 4096 \
-  --disk /dev/vg-infra/lv-infra-01,bus=virtio \
+  --disk /dev/vg-infra/lv-nuc-00-01,bus=virtio \
   --network bridge=virbr0,model=virtio \
   --os-variant rocky9 \
   --location /var/www/html/rocky9-minimal.iso \
-  --initrd-inject /root/ks-infra-01.cfg \
-  --extra-args "inst.ks=file:/ks-infra-01.cfg console=ttyS0" \
+  --initrd-inject /root/ks-nuc-00-01.cfg \
+  --extra-args "inst.ks=file:/ks-nuc-00-01.cfg console=ttyS0" \
   --console pty,target_type=serial \
   --noautoconsole
 
-# infra-02
+# nuc-00-02
 virt-install \
-  --name infra-02 \
+  --name nuc-00-02 \
   --vcpus 2 \
-  --memory 4096 \
-  --disk /dev/vg-infra/lv-infra-02,bus=virtio \
+  --memory 2048 \
+  --disk /dev/vg-infra/lv-nuc-00-02,bus=virtio \
   --network bridge=virbr0,model=virtio \
   --os-variant rocky9 \
   --location /var/www/html/rocky9-minimal.iso \
-  --initrd-inject /root/ks-infra-02.cfg \
-  --extra-args "inst.ks=file:/ks-infra-02.cfg console=ttyS0" \
+  --initrd-inject /root/ks-nuc-00-02.cfg \
+  --extra-args "inst.ks=file:/ks-nuc-00-02.cfg console=ttyS0" \
+  --console pty,target_type=serial \
+  --noautoconsole
+
+# nuc-00-03
+virt-install \
+  --name nuc-00-03 \
+  --vcpus 2 \
+  --memory 2048 \
+  --disk /dev/vg-infra/lv-nuc-00-03,bus=virtio \
+  --network bridge=virbr0,model=virtio \
+  --os-variant rocky9 \
+  --location /var/www/html/rocky9-minimal.iso \
+  --initrd-inject /root/ks-nuc-00-03.cfg \
+  --extra-args "inst.ks=file:/ks-nuc-00-03.cfg console=ttyS0" \
   --console pty,target_type=serial \
   --noautoconsole
 ```
@@ -53,47 +68,48 @@ virt-install \
 Enable VMs to auto-start:
 
 ```bash
-virsh autostart infra-01
-virsh autostart infra-02
+virsh autostart nuc-00-01
+virsh autostart nuc-00-02
+virsh autostart nuc-00-03
 ```
 
-## infra-01: ISC DHCP + BIND DNS
+## nuc-00-01: ISC DHCP + BIND DNS (Primary)
 
 ### ISC DHCP Configuration
 
 ```bash
-# Install on infra-01
+# Install on nuc-00-01
 dnf install -y dhcp-server bind bind-utils
 
 # /etc/dhcp/dhcpd.conf
 cat > /etc/dhcp/dhcpd.conf << 'EOF'
 authoritative;
-default-lease-time 86400;
-max-lease-time 604800;
+default-lease-time 7200;
+max-lease-time 7200;
 
-subnet 192.168.100.0 netmask 255.255.255.0 {
-  range 192.168.100.100 192.168.100.200;
-  option routers 192.168.100.1;
-  option domain-name-servers 192.168.100.21;
-  option domain-name "kubernerdes.com";
-  next-server 192.168.100.10;
+subnet 10.10.12.0 netmask 255.255.252.0 {
+  range 10.10.15.0 10.10.15.254;
+  option routers 10.10.12.1;
+  option domain-name-servers 10.10.12.8, 10.10.12.9, 8.8.8.8;
+  option domain-name "enclave.kubernerdes.com";
+  next-server 10.10.12.10;
   filename "pxelinux.0";
 }
 
-# Static leases for Harvester nodes
+# Static leases for Harvester nodes (PXE)
 host nuc-01 {
-  hardware ethernet AA:BB:CC:DD:EE:11;  # Replace with actual MAC
-  fixed-address 192.168.100.11;
+  hardware ethernet 48:21:0b:65:ce:e5;
+  fixed-address 10.10.12.101;
   option host-name "nuc-01";
 }
 host nuc-02 {
-  hardware ethernet AA:BB:CC:DD:EE:22;  # Replace with actual MAC
-  fixed-address 192.168.100.12;
+  hardware ethernet 48:21:0b:65:c2:c7;
+  fixed-address 10.10.12.102;
   option host-name "nuc-02";
 }
 host nuc-03 {
-  hardware ethernet AA:BB:CC:DD:EE:33;  # Replace with actual MAC
-  fixed-address 192.168.100.13;
+  hardware ethernet 48:21:0b:5d:7a:e6;
+  fixed-address 10.10.12.103;
   option host-name "nuc-03";
 }
 EOF
@@ -101,16 +117,7 @@ EOF
 systemctl enable --now dhcpd
 ```
 
-**Find MAC addresses** for the static leases:
-
-```bash
-# On nuc-00, check ARP table after each NUC boots to BIOS
-arp -n | grep 192.168.100
-```
-
-Or check the switch's connected device table if it's managed.
-
-### BIND DNS Configuration
+### BIND DNS Configuration (Primary)
 
 ```bash
 # /etc/named.conf
@@ -123,27 +130,60 @@ options {
   forwarders { 1.1.1.1; 8.8.8.8; };
 };
 
-zone "kubernerdes.com" IN {
+zone "enclave.kubernerdes.com" IN {
   type master;
-  file "kubernerdes.com.zone";
+  file "master/db.enclave.kubernerdes.com";
+  allow-transfer { 10.10.12.9; };
 };
 
-zone "100.168.192.in-addr.arpa" IN {
+zone "12.10.10.in-addr.arpa" IN {
   type master;
-  file "100.168.192.in-addr.arpa.zone";
+  file "master/db.12.10.10.in-addr.arpa";
+  allow-transfer { 10.10.12.9; };
 };
 EOF
 
 # Copy zone files (see Network Planning for content)
-# Place in /var/named/kubernerdes.com.zone
-# Place in /var/named/100.168.192.in-addr.arpa.zone
+# Place in /var/lib/named/master/db.enclave.kubernerdes.com
+# Place in /var/lib/named/master/db.12.10.10.in-addr.arpa
 
 named-checkconf
-named-checkzone kubernerdes.com /var/named/kubernerdes.com.zone
+named-checkzone enclave.kubernerdes.com /var/lib/named/master/db.enclave.kubernerdes.com
 systemctl enable --now named
 ```
 
-## infra-02: HAProxy + Keepalived
+## nuc-00-02: BIND DNS (Secondary)
+
+```bash
+dnf install -y bind bind-utils
+
+# /etc/named.conf — secondary (slave) configuration
+cat > /etc/named.conf << 'EOF'
+options {
+  listen-on port 53 { any; };
+  directory "/var/named";
+  allow-query { any; };
+  recursion yes;
+  forwarders { 1.1.1.1; 8.8.8.8; };
+};
+
+zone "enclave.kubernerdes.com" IN {
+  type slave;
+  masters { 10.10.12.8; };
+  file "slaves/db.enclave.kubernerdes.com";
+};
+
+zone "12.10.10.in-addr.arpa" IN {
+  type slave;
+  masters { 10.10.12.8; };
+  file "slaves/db.12.10.10.in-addr.arpa";
+};
+EOF
+
+systemctl enable --now named
+```
+
+## nuc-00-03: HAProxy + Keepalived
 
 ### HAProxy Configuration
 
@@ -173,36 +213,40 @@ listen stats
   stats enable
   stats uri /stats
   stats refresh 10s
+  stats auth admin:rancher
 
 #---------------------------------------------------------------------
-# Harvester API VIP (192.168.100.60)
+# Rancher Manager VIP (10.10.12.210)
 #---------------------------------------------------------------------
-frontend harvester-api
-  bind 192.168.100.60:443
-  default_backend harvester-nodes-443
-
-backend harvester-nodes-443
-  option tcp-check
-  server nuc-01 192.168.100.11:443 check
-  server nuc-02 192.168.100.12:443 check
-  server nuc-03 192.168.100.13:443 check
-
-#---------------------------------------------------------------------
-# Rancher Manager VIP (192.168.100.50)
-#---------------------------------------------------------------------
-frontend rancher-https
-  bind 192.168.100.50:443
-  default_backend rancher-nodes-443
-
-backend rancher-nodes-443
-  server rancher-mgr 192.168.100.30:443 check
-
 frontend rancher-http
-  bind 192.168.100.50:80
+  bind 10.10.12.210:80
   default_backend rancher-nodes-80
 
 backend rancher-nodes-80
-  server rancher-mgr 192.168.100.30:80 check
+  option tcp-check
+  server rancher-01 10.10.12.211:80 check
+  server rancher-02 10.10.12.212:80 check
+  server rancher-03 10.10.12.213:80 check
+
+frontend rancher-https
+  bind 10.10.12.210:443
+  default_backend rancher-nodes-443
+
+backend rancher-nodes-443
+  option tcp-check
+  server rancher-01 10.10.12.211:443 check
+  server rancher-02 10.10.12.212:443 check
+  server rancher-03 10.10.12.213:443 check
+
+frontend rancher-api
+  bind 10.10.12.210:6443
+  default_backend rancher-nodes-6443
+
+backend rancher-nodes-6443
+  option tcp-check
+  server rancher-01 10.10.12.211:6443 check
+  server rancher-02 10.10.12.212:6443 check
+  server rancher-03 10.10.12.213:6443 check
 EOF
 
 systemctl enable --now haproxy
@@ -210,42 +254,42 @@ systemctl enable --now haproxy
 
 ### Keepalived Configuration
 
-Keepalived manages the VIPs. `infra-02` is the MASTER; if you add a second HAProxy node later, it becomes BACKUP.
+Keepalived manages two VIPs on `nuc-00-03`. It is the MASTER for both.
 
 ```bash
 # /etc/keepalived/keepalived.conf
 cat > /etc/keepalived/keepalived.conf << 'EOF'
 global_defs {
-  router_id infra-02
+  router_id nuc-00-03
 }
 
-vrrp_instance RANCHER_VIP {
+vrrp_instance VI_HADRIAN {
   state MASTER
   interface eth0
-  virtual_router_id 50
+  virtual_router_id 193
   priority 100
   advert_int 1
   authentication {
     auth_type PASS
-    auth_pass enclave2024
+    auth_pass rancher
   }
   virtual_ipaddress {
-    192.168.100.50/24
+    10.10.12.193/22
   }
 }
 
-vrrp_instance HARVESTER_VIP {
+vrrp_instance VI_RANCHER {
   state MASTER
   interface eth0
-  virtual_router_id 60
+  virtual_router_id 210
   priority 100
   advert_int 1
   authentication {
     auth_type PASS
-    auth_pass enclave2024
+    auth_pass rancher
   }
   virtual_ipaddress {
-    192.168.100.60/24
+    10.10.12.210/22
   }
 }
 EOF
@@ -255,40 +299,48 @@ systemctl enable --now keepalived
 
 ## Verification
 
-### infra-01 checks
+### nuc-00-01 checks
 
 ```bash
 # DHCP is running
 systemctl is-active dhcpd
 
 # DNS resolves local names
-dig @192.168.100.21 nuc-00.kubernerdes.com
-dig @192.168.100.21 rancher.kubernerdes.com
+dig @10.10.12.8 nuc-00.enclave.kubernerdes.com
+dig @10.10.12.8 rancher.enclave.kubernerdes.com
 # Expected: ANSWER SECTION with correct IPs
 
 # Reverse DNS
-dig @192.168.100.21 -x 192.168.100.10
+dig @10.10.12.8 -x 10.10.12.10
 ```
 
-### infra-02 checks
+### nuc-00-02 checks
+
+```bash
+# Named is running and zone transferred from primary
+systemctl is-active named
+dig @10.10.12.9 nuc-00.enclave.kubernerdes.com
+```
+
+### nuc-00-03 checks
 
 ```bash
 # HAProxy running
 systemctl is-active haproxy
-curl http://192.168.100.22:9000/stats
+curl http://10.10.12.93:9000/stats
 
 # VIPs are assigned
-ip addr show | grep 192.168.100.50
-ip addr show | grep 192.168.100.60
+ip addr show | grep 10.10.12.193
+ip addr show | grep 10.10.12.210
 
 # Keepalived running
 systemctl is-active keepalived
 ```
 
-All checks passing? Update `nuc-00`'s DNS to point to `192.168.100.21`:
+All checks passing? Update `nuc-00`'s DNS to point to `10.10.12.8`:
 
 ```bash
-nmcli connection modify eth0 ipv4.dns "192.168.100.21"
+nmcli connection modify eth0 ipv4.dns "10.10.12.8 10.10.12.9"
 nmcli connection up eth0
 ```
 

@@ -30,7 +30,7 @@ set -euo pipefail
 
 BACKUP_DIR="${BACKUP_DIR:-/backup/enclave}"
 DATE=$(date +%Y%m%d-%H%M%S)
-HOSTS=(nuc-00 infra-01 infra-02)
+HOSTS=(nuc-00 nuc-00-01 nuc-00-02 nuc-00-03)
 
 mkdir -p "${BACKUP_DIR}/${DATE}"
 
@@ -78,60 +78,53 @@ The enclave source repo uses Ansible to manage all host configurations. After an
 
 ```
 enclave.kubernerdes.com/
-├── inventory/
-│   └── hosts.ini
-├── playbooks/
-│   ├── admin-host.yml      # nuc-00: KVM, Apache, TFTP
-│   ├── infra-01.yml        # DHCP, DNS
-│   ├── infra-02.yml        # HAProxy, Keepalived
-│   └── site.yml            # Run all playbooks
-├── roles/
-│   ├── dhcp/
-│   ├── dns/
-│   ├── haproxy/
-│   └── keepalived/
-└── vars/
-    └── network.yml         # IP assignments, VIPs, MACs
+├── Ansible/
+│   ├── hosts               # inventory file
+│   └── ...
+├── Files/
+│   ├── nuc-00-01/          # DHCP, DNS configs
+│   ├── nuc-00-02/          # DNS secondary configs
+│   └── nuc-00-03/          # HAProxy, Keepalived configs
+└── Scripts/
+    └── ...
 ```
 
 ### Common Playbook Runs
 
 ```bash
 # Full site configuration
-ansible-playbook -i inventory/hosts.ini playbooks/site.yml
+ansible-playbook -i Ansible/hosts site.yml
 
 # Only infrastructure VMs
-ansible-playbook -i inventory/hosts.ini playbooks/infra-01.yml playbooks/infra-02.yml
-
-# Just DHCP (e.g., after adding a new static lease)
-ansible-playbook -i inventory/hosts.ini playbooks/infra-01.yml --tags dhcp
+ansible-playbook -i Ansible/hosts infra-vms.yml
 
 # Check mode (dry run)
-ansible-playbook -i inventory/hosts.ini playbooks/site.yml --check --diff
+ansible-playbook -i Ansible/hosts site.yml --check --diff
 ```
 
 ### Adding a New DHCP Static Lease
 
 1. Find the MAC address of the new device
-2. Edit `vars/network.yml`:
+2. Edit the DHCP config on `nuc-00-01` at `/etc/dhcp/dhcpd.conf`:
 
-```yaml
-dhcp_static_leases:
-  - name: new-device
-    mac: "AA:BB:CC:DD:EE:FF"
-    ip: "192.168.100.25"
+```
+host new-device {
+  hardware ethernet AA:BB:CC:DD:EE:FF;
+  fixed-address 10.10.12.25;
+  option host-name "new-device";
+}
 ```
 
-3. Run the DHCP playbook:
+3. Restart DHCP:
 
 ```bash
-ansible-playbook -i inventory/hosts.ini playbooks/infra-01.yml --tags dhcp
+systemctl restart dhcpd
 ```
 
-4. Commit the change:
+4. Commit the config change to the repo:
 
 ```bash
-git add vars/network.yml
+git add Files/nuc-00-01/etc/dhcp/dhcpd.conf
 git commit -m "Add static DHCP lease for new-device"
 ```
 
@@ -140,14 +133,14 @@ git commit -m "Add static DHCP lease for new-device"
 Configure an NFS backup target in Longhorn for VM volume backups:
 
 1. Harvester UI → **Advanced** → **Settings** → **backup-target**
-2. Set: `nfs://192.168.100.10/backup/longhorn` (or S3 endpoint)
+2. Set: `nfs://10.10.12.10/backup/longhorn` (or S3 endpoint)
 
 Or via kubectl:
 
 ```bash
 kubectl patch setting backup-target -n longhorn-system \
   --type merge \
-  -p '{"value":"nfs://192.168.100.10/backup/longhorn"}'
+  -p '{"value":"nfs://10.10.12.10/backup/longhorn"}'
 ```
 
 Create recurring snapshots:
@@ -170,10 +163,10 @@ EOF
 
 ## K3s etcd Snapshots (Rancher Manager)
 
-K3s on `rancher-mgr` automatically takes etcd snapshots. Verify and manage:
+K3s on the Rancher cluster automatically takes etcd snapshots. Verify and manage:
 
 ```bash
-# On rancher-mgr
+# On rancher-01 (or any Rancher K3s node)
 # List local snapshots
 ls -lh /var/lib/rancher/k3s/server/db/snapshots/
 
@@ -190,7 +183,7 @@ systemctl restart k3s
 Copy snapshots off the VM:
 
 ```bash
-scp rke@192.168.100.30:/var/lib/rancher/k3s/server/db/snapshots/\* \
+scp mansible@10.10.12.211:/var/lib/rancher/k3s/server/db/snapshots/\* \
   /mnt/backup/enclave/rancher-etcd/
 ```
 
@@ -210,11 +203,11 @@ cat << 'EOF' | kubectl apply -f -
 apiVersion: harvesterhci.io/v1beta1
 kind: Upgrade
 metadata:
-  name: hvst-upgrade-v1-3-x
+  name: hvst-upgrade-v1-7-x
   namespace: harvester-system
 spec:
-  version: v1.3.x
-  image: rancher/harvester:v1.3.x
+  version: v1.7.x
+  image: rancher/harvester:v1.7.x
 EOF
 ```
 
@@ -242,11 +235,11 @@ kubectl --kubeconfig ~/.kube/rancher-k3s-config \
 
 ```bash
 # Run on nuc-00 and all VMs via Ansible
-ansible-playbook -i inventory/hosts.ini playbooks/patch.yml
+ansible-playbook -i Ansible/hosts patch.yml
 
 # Or manually on each host
 dnf update -y
 systemctl reboot  # if kernel was updated
 ```
 
-After rebooting `nuc-00`, the infra VMs (infra-01, infra-02) are also rebooted — there will be a brief DHCP/DNS/VIP outage. Plan this during a maintenance window.
+After rebooting `nuc-00`, the infra VMs (`nuc-00-01`, `nuc-00-02`, `nuc-00-03`) are also rebooted — there will be a brief DHCP/DNS/VIP outage. Plan this during a maintenance window.

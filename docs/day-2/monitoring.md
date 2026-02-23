@@ -11,14 +11,14 @@ sidebar_position: 2
 
 | Dashboard | URL | Purpose |
 |-----------|-----|---------|
-| Harvester UI | https://192.168.100.60 | Cluster nodes, VMs, storage, networking |
-| Rancher Manager | https://192.168.100.50 | Multi-cluster overview, workload health |
-| HAProxy Stats | http://192.168.100.22:9000/stats | Load balancer backend health, traffic |
-| Longhorn UI | https://192.168.100.60 → Storage → Longhorn | Volume health, replica status |
+| Harvester UI | https://10.10.12.100 | Cluster nodes, VMs, storage, networking |
+| Rancher Manager | https://10.10.12.210 | Multi-cluster overview, workload health |
+| HAProxy Stats | http://10.10.12.93:9000/stats | Load balancer backend health, traffic |
+| Longhorn UI | https://10.10.12.100 → Storage → Longhorn | Volume health, replica status |
 
 ## Harvester Dashboard
 
-Access the Harvester UI at `https://192.168.100.60` (or `https://harvester.kubernerdes.com`).
+Access the Harvester UI at `https://10.10.12.100` (or `https://harvester-edge.enclave.kubernerdes.com`).
 
 Key views:
 
@@ -49,9 +49,9 @@ kubectl top nodes
 
 ## Rancher Dashboard
 
-Access at `https://192.168.100.50` (or `https://rancher.kubernerdes.com`).
+Access at `https://10.10.12.210` (or `https://rancher.enclave.kubernerdes.com`).
 
-- **Cluster Explorer** → select `harvester` cluster → workload health
+- **Cluster Explorer** → select `harvester-edge` cluster → workload health
 - **Monitoring** → if you've deployed the rancher-monitoring chart, Grafana dashboards are available here
 - **Fleet** → GitOps-managed workloads across clusters
 
@@ -73,7 +73,7 @@ This deploys Prometheus + Grafana + Alertmanager into the Harvester cluster. Acc
 
 The HAProxy stats page provides real-time load balancer visibility.
 
-Access at: http://192.168.100.22:9000/stats
+Access at: http://10.10.12.93:9000/stats (credentials: admin/rancher)
 
 Key metrics to monitor:
 
@@ -83,7 +83,7 @@ Key metrics to monitor:
 | Session rate | Baseline normal | Sudden spike |
 | Error rate | ~0 | > 0.1% |
 
-From the command line:
+From the command line (on nuc-00-03):
 
 ```bash
 # Check HAProxy backend status via socket
@@ -118,7 +118,7 @@ Harvester's control plane uses etcd. Check its health periodically:
 
 ```bash
 # SSH to any Harvester node
-ssh rancher@192.168.100.11
+ssh rancher@10.10.12.101
 
 # etcd health
 kubectl get pods -n kube-system | grep etcd
@@ -157,9 +157,9 @@ Basic alerting can be configured via:
 3. **HAProxy** — log backend state changes to syslog
 
 ```bash
-# Watch HAProxy state changes in real time
+# Watch HAProxy state changes in real time (on nuc-00-03)
 journalctl -u haproxy -f | grep -E "Server|backend"
 
-# Watch Keepalived VIP transitions
+# Watch Keepalived VIP transitions (on nuc-00-03)
 journalctl -u keepalived -f
 ```

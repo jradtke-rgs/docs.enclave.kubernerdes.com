@@ -14,7 +14,7 @@ Before beginning Day 1, download all required images and install workstation too
 | Image | Version | Use |
 |-------|---------|-----|
 | Rocky Linux 9 minimal ISO | 9.x | nuc-00 admin host OS |
-| Harvester ISO | v1.3.x | Harvester nodes (nuc-01/02/03) |
+| Harvester ISO | v1.7.1 | Harvester nodes (nuc-01/02/03) |
 
 Download locations:
 - Rocky Linux: https://rockylinux.org/download
@@ -53,7 +53,7 @@ Install these on your laptop/workstation (not on any NUC):
 brew install kubectl helm ansible k9s jq yq
 
 # virtctl — download binary matching your Harvester version
-VERSION=v1.3.0
+VERSION=v1.7.1
 curl -Lo virtctl https://github.com/kubevirt/kubevirt/releases/download/${VERSION}/virtctl-${VERSION}-darwin-amd64
 chmod +x virtctl
 sudo mv virtctl /usr/local/bin/
@@ -64,21 +64,24 @@ sudo mv virtctl /usr/local/bin/
 The enclave repo uses Ansible for configuration management. Prepare your inventory before Day 1:
 
 ```ini
-# inventory/hosts.ini
-[admin]
-nuc-00 ansible_host=192.168.100.10
+# Ansible/hosts
+[InfraNodesPhysical]
+nuc-00 ansible_host=10.10.12.10
 
-[infra_vms]
-infra-01 ansible_host=192.168.100.21
-infra-02 ansible_host=192.168.100.22
+[InfraNodesVirtualMachines]
+nuc-00-01 ansible_host=10.10.12.8
+nuc-00-02 ansible_host=10.10.12.9
+nuc-00-03 ansible_host=10.10.12.93
 
-[harvester]
-nuc-01 ansible_host=192.168.100.11
-nuc-02 ansible_host=192.168.100.12
-nuc-03 ansible_host=192.168.100.13
+[HarvesterEdge]
+nuc-01 ansible_host=10.10.12.101
+nuc-02 ansible_host=10.10.12.102
+nuc-03 ansible_host=10.10.12.103
 
 [all:vars]
-ansible_user=rke
+ansible_user=mansible
+ansible_become=true
+ansible_python_interpreter=/usr/bin/python3
 ansible_ssh_private_key_file=~/.ssh/id_ed25519
 ```
 
@@ -100,16 +103,16 @@ Sample iPXE boot script (customize IPs):
 
 ```ipxe
 #!ipxe
-kernel http://192.168.100.10/harvester/vmlinuz \
+kernel http://10.10.12.10/harvester/vmlinuz \
   ip=dhcp \
   net.ifnames=1 \
   rd.cos.disable \
   rd.noverifyssl \
   console=tty1 \
-  root=live:http://192.168.100.10/harvester/rootfs.squashfs \
+  root=live:http://10.10.12.10/harvester/rootfs.squashfs \
   harvester.install.automatic=true \
-  harvester.install.config_url=http://192.168.100.10/harvester/config-nuc-01.yaml
-initrd http://192.168.100.10/harvester/initrd
+  harvester.install.config_url=http://10.10.12.10/harvester/config-nuc-01.yaml
+initrd http://10.10.12.10/harvester/initrd
 boot
 ```
 
@@ -131,7 +134,7 @@ To pre-pull charts for offline use:
 
 ```bash
 helm pull jetstack/cert-manager --version v1.14.0 --destination ./helm-cache/
-helm pull rancher-prime/rancher --version v2.8.x --destination ./helm-cache/
+helm pull rancher-prime/rancher --destination ./helm-cache/
 ```
 
 ## Container Image Pre-Pull (Air Gap)
@@ -152,7 +155,7 @@ Contact RGS for the Carbide image list and credentials.
 ## Day 0 Checklist
 
 - [ ] Rocky Linux 9 ISO downloaded and checksum verified
-- [ ] Harvester ISO downloaded and checksum verified
+- [ ] Harvester v1.7.1 ISO downloaded and checksum verified
 - [ ] Workstation tools installed: kubectl, helm, ansible, k9s
 - [ ] SSH key pair generated
 - [ ] Ansible inventory stub created
