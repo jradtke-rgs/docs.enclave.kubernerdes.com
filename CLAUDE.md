@@ -52,3 +52,15 @@ docs/
 - The `index.md` files in each day directory use the day name as their `id` (e.g., `id: day-0`), not `id: index`
 - Blog is disabled (`blog: false` in config)
 - `onBrokenMarkdownLinks` is set via `markdown.hooks` (not the deprecated top-level option)
+
+## Naming & Domain
+
+- Correct domain spelling: `kubernerdes.com` (no extra 'e' — not `kuberneredes.com`)
+- Correct docs site URL: `docs.enclave.kubernerdes.com` (dot-separated, not `docs-enclave.kubernerdes.com`)
+- npm package name uses hyphens for dots: `docs-enclave-kubernerdes-com`
+- GitHub repos follow dot-separated naming: `enclave.kubernerdes.com`, `docs.enclave.kubernerdes.com`
+
+## Git Remote
+
+- Remote uses a custom SSH host alias: `github.com-jradtke-rgs` (not plain `github.com`)
+- Push target: `git@github.com-jradtke-rgs:jradtke-rgs/docs.enclave.kubernerdes.com.git`
