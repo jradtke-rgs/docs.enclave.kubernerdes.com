@@ -164,5 +164,5 @@ Contact RGS for the Carbide image list and credentials.
 - [ ] Ansible inventory stub created
 - [ ] Helm chart repos added (or charts pre-pulled)
 - [ ] PXE boot scripts drafted with correct IPs
-- [ ] IP address plan finalized (see [Network Planning](./network-planning))
-- [ ] Hardware assembled and powered on (see [Hardware](./hardware))
+- [ ] IP address plan finalized (see [Network Planning](./network-planning.md))
+- [ ] Hardware assembled and powered on (see [Hardware](./hardware.md))

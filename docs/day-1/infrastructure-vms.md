@@ -344,4 +344,4 @@ nmcli connection modify eth0 ipv4.dns "10.10.12.8 10.10.12.9"
 nmcli connection up eth0
 ```
 
-Proceed to [Harvester Cluster](./harvester-cluster).
+Proceed to [Harvester Cluster](./harvester-cluster.md).

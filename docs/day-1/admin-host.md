@@ -145,7 +145,7 @@ LABEL local
 EOF
 ```
 
-Per-node Harvester config files are served from `/var/www/html/harvester/`. See [Harvester Cluster](./harvester-cluster) for config file content.
+Per-node Harvester config files are served from `/var/www/html/harvester/`. See [Harvester Cluster](./harvester-cluster.md) for config file content.
 
 ## 6. SSH Key Distribution
 
@@ -183,4 +183,4 @@ lvs vg-infra
 ping -c 4 10.10.12.1
 ```
 
-All checks passing? Proceed to [Infrastructure VMs](./infrastructure-vms).
+All checks passing? Proceed to [Infrastructure VMs](./infrastructure-vms.md).

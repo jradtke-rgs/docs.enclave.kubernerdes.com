@@ -13,9 +13,9 @@ Day 2 is everything that happens after the initial deployment — keeping the en
 
 | Topic | Document |
 |-------|----------|
-| Dashboards, metrics, health monitoring | [Monitoring](./monitoring) |
-| Backups, config management, Ansible | [Backup & Maintenance](./backup-maintenance) |
-| Common issues, kubectl snippets, cert debugging | [Troubleshooting](./troubleshooting) |
+| Dashboards, metrics, health monitoring | [Monitoring](./monitoring.md) |
+| Backups, config management, Ansible | [Backup & Maintenance](./backup-maintenance.md) |
+| Common issues, kubectl snippets, cert debugging | [Troubleshooting](./troubleshooting.md) |
 
 ## Operational Principles
 

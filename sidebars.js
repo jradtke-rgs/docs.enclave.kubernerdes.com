@@ -15,7 +15,7 @@ const sidebars = {
       items: [
         'day-0/hardware',
         'day-0/network-planning',
-        'day-0/software-prerequisites',
+        'day-0/prerequisites',
       ],
     },
     {

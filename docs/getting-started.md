@@ -74,9 +74,9 @@ This documentation is organized around the standard operational lifecycle:
 
 | Phase | Focus | Where to Start |
 |-------|-------|----------------|
-| **Day 0** | Design & planning | [Day 0 Overview](/docs/day-0) |
-| **Day 1** | Initial deployment | [Day 1 Overview](/docs/day-1) |
-| **Day 2** | Ongoing operations | [Day 2 Overview](/docs/day-2) |
+| **Day 0** | Design & planning | [Day 0 Overview](./day-0/index.md) |
+| **Day 1** | Initial deployment | [Day 1 Overview](./day-1/index.md) |
+| **Day 2** | Ongoing operations | [Day 2 Overview](./day-2/index.md) |
 
 ## Prerequisites
 

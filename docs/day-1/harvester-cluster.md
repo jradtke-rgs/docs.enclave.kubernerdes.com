@@ -202,4 +202,4 @@ If the secondary NVMe (`/dev/nvme0n1`) was not automatically provisioned:
 
 Longhorn will format and add these disks to its storage pool.
 
-Proceed to [Rancher Manager](./rancher-manager).
+Proceed to [Rancher Manager](./rancher-manager.md).

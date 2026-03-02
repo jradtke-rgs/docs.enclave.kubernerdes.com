@@ -146,7 +146,7 @@ kubectl --kubeconfig ~/.kube/rancher-k3s-config \
   custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,READY:.status.conditions[-1].status,EXPIRY:.status.notAfter'
 ```
 
-Certificates managed by cert-manager renew automatically at 2/3 of their lifetime. If a certificate is stuck `NotReady`, see [Troubleshooting](./troubleshooting#certificate-issues).
+Certificates managed by cert-manager renew automatically at 2/3 of their lifetime. If a certificate is stuck `NotReady`, see [Troubleshooting](./troubleshooting.md#certificate-issues).
 
 ## Alerting
 

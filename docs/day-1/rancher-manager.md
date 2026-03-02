@@ -178,7 +178,7 @@ kubectl --kubeconfig ~/.kube/rancher-k3s-config \
 
 ## Step 5: Confirm HAProxy Routing
 
-`nuc-00-03`'s HAProxy already has the Rancher backends configured (see [Infrastructure VMs](./infrastructure-vms)). The VIP `10.10.12.210` routes through HAProxy to all three Rancher nodes.
+`nuc-00-03`'s HAProxy already has the Rancher backends configured (see [Infrastructure VMs](./infrastructure-vms.md)). The VIP `10.10.12.210` routes through HAProxy to all three Rancher nodes.
 
 Test connectivity:
 
@@ -221,4 +221,4 @@ curl -k -s -o /dev/null -w "%{http_code}" https://rancher.enclave.kubernerdes.co
 
 Login with the bootstrap password you set during `helm install`. **Change it immediately** in the UI.
 
-Day 1 is complete! Proceed to [Day 2 — Operate](../day-2).
+Day 1 is complete! Proceed to [Day 2 — Operate](../day-2/index.md).
