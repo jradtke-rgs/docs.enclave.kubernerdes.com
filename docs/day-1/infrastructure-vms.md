@@ -15,7 +15,7 @@ Three VMs run on `nuc-00` providing shared infrastructure services:
 | `nuc-00-02` | `10.10.12.9` | BIND DNS (secondary) |
 | `nuc-00-03` | `10.10.12.93` | HAProxy, Keepalived |
 
-All VMs run Rocky Linux 9 minimal.
+All VMs run openSUSE Leap 15.5.
 
 ## Creating the VMs
 
@@ -29,10 +29,10 @@ virt-install \
   --memory 4096 \
   --disk /dev/vg-infra/lv-nuc-00-01,bus=virtio \
   --network bridge=virbr0,model=virtio \
-  --os-variant rocky9 \
-  --location /var/www/html/rocky9-minimal.iso \
-  --initrd-inject /root/ks-nuc-00-01.cfg \
-  --extra-args "inst.ks=file:/ks-nuc-00-01.cfg console=ttyS0" \
+  --os-variant opensuse15.5 \
+  --location /var/www/html/openSUSE-Leap-15.5-DVD-x86_64.iso \
+  --initrd-inject /root/autoyast-nuc-00-01.xml \
+  --extra-args "autoyast=file:///autoyast-nuc-00-01.xml console=ttyS0" \
   --console pty,target_type=serial \
   --noautoconsole
 
@@ -43,10 +43,10 @@ virt-install \
   --memory 2048 \
   --disk /dev/vg-infra/lv-nuc-00-02,bus=virtio \
   --network bridge=virbr0,model=virtio \
-  --os-variant rocky9 \
-  --location /var/www/html/rocky9-minimal.iso \
-  --initrd-inject /root/ks-nuc-00-02.cfg \
-  --extra-args "inst.ks=file:/ks-nuc-00-02.cfg console=ttyS0" \
+  --os-variant opensuse15.5 \
+  --location /var/www/html/openSUSE-Leap-15.5-DVD-x86_64.iso \
+  --initrd-inject /root/autoyast-nuc-00-02.xml \
+  --extra-args "autoyast=file:///autoyast-nuc-00-02.xml console=ttyS0" \
   --console pty,target_type=serial \
   --noautoconsole
 
@@ -57,10 +57,10 @@ virt-install \
   --memory 2048 \
   --disk /dev/vg-infra/lv-nuc-00-03,bus=virtio \
   --network bridge=virbr0,model=virtio \
-  --os-variant rocky9 \
-  --location /var/www/html/rocky9-minimal.iso \
-  --initrd-inject /root/ks-nuc-00-03.cfg \
-  --extra-args "inst.ks=file:/ks-nuc-00-03.cfg console=ttyS0" \
+  --os-variant opensuse15.5 \
+  --location /var/www/html/openSUSE-Leap-15.5-DVD-x86_64.iso \
+  --initrd-inject /root/autoyast-nuc-00-03.xml \
+  --extra-args "autoyast=file:///autoyast-nuc-00-03.xml console=ttyS0" \
   --console pty,target_type=serial \
   --noautoconsole
 ```
@@ -79,7 +79,7 @@ virsh autostart nuc-00-03
 
 ```bash
 # Install on nuc-00-01
-dnf install -y dhcp-server bind bind-utils
+zypper install -y dhcp-server bind bind-utils
 
 # /etc/dhcp/dhcpd.conf
 cat > /etc/dhcp/dhcpd.conf << 'EOF'
@@ -155,7 +155,7 @@ systemctl enable --now named
 ## nuc-00-02: BIND DNS (Secondary)
 
 ```bash
-dnf install -y bind bind-utils
+zypper install -y bind bind-utils
 
 # /etc/named.conf — secondary (slave) configuration
 cat > /etc/named.conf << 'EOF'
@@ -188,7 +188,7 @@ systemctl enable --now named
 ### HAProxy Configuration
 
 ```bash
-dnf install -y haproxy keepalived
+zypper install -y haproxy keepalived
 
 # /etc/haproxy/haproxy.cfg
 cat > /etc/haproxy/haproxy.cfg << 'EOF'

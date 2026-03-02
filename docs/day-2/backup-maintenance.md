@@ -231,14 +231,14 @@ kubectl --kubeconfig ~/.kube/rancher-k3s-config \
   rollout status deployment rancher -n cattle-system
 ```
 
-## System Patching (Rocky Linux)
+## System Patching (openSUSE Leap)
 
 ```bash
 # Run on nuc-00 and all VMs via Ansible
 ansible-playbook -i Ansible/hosts patch.yml
 
 # Or manually on each host
-dnf update -y
+zypper --non-interactive update
 systemctl reboot  # if kernel was updated
 ```
 

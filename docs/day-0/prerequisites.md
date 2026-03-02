@@ -1,23 +1,26 @@
 ---
-id: software-prerequisites
-title: Software Prerequisites
-sidebar_label: Software Prerequisites
+id: prerequisites
+title: Prerequisites
+sidebar_label: Prerequisites
 sidebar_position: 4
 ---
 
-# Software Prerequisites
+# Prerequisites
 
 Before beginning Day 1, download all required images and install workstation tooling. If you're building an air-gapped enclave, this is the last opportunity to pull anything from the internet.
+
+## Request Carbide License
+Contact your Rancher Government Solutions team to discuss your goals and to request your Carbide Key.  Typically this discussion will include timelines, KPIs and success criteria, etc.. 
 
 ## OS Images
 
 | Image | Version | Use |
 |-------|---------|-----|
-| Rocky Linux 9 minimal ISO | 9.x | nuc-00 admin host OS |
+| openSUSE Leap 15.5 ISO | 15.5 | nuc-00 admin host OS |
 | Harvester ISO | v1.7.1 | Harvester nodes (nuc-01/02/03) |
 
 Download locations:
-- Rocky Linux: https://rockylinux.org/download
+- openSUSE Leap: https://get.opensuse.org/leap/15.5/
 - Harvester: https://github.com/harvester/harvester/releases
 
 > **Verify checksums** after downloading. Both projects publish SHA256 sums alongside their ISOs.
@@ -96,7 +99,7 @@ ssh-keygen -t ed25519 -C "enclave-admin" -f ~/.ssh/id_ed25519
 `nuc-00` will serve PXE boot for the Harvester nodes. Collect these during Day 0:
 
 1. **Harvester ISO** — will be mounted or extracted on nuc-00's Apache root
-2. **IPXE or PXELINUX** — provided by the `syslinux` package on Rocky Linux
+2. **IPXE or PXELINUX** — provided by the `syslinux` package on openSUSE Leap
 3. **Harvester iPXE config** — from the Harvester documentation (modify IP addresses for your subnet)
 
 Sample iPXE boot script (customize IPs):
@@ -154,7 +157,7 @@ Contact RGS for the Carbide image list and credentials.
 
 ## Day 0 Checklist
 
-- [ ] Rocky Linux 9 ISO downloaded and checksum verified
+- [ ] openSUSE Leap 15.5 ISO downloaded and checksum verified
 - [ ] Harvester v1.7.1 ISO downloaded and checksum verified
 - [ ] Workstation tools installed: kubectl, helm, ansible, k9s
 - [ ] SSH key pair generated

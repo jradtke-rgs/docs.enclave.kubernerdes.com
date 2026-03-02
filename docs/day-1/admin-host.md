@@ -13,9 +13,9 @@ sidebar_position: 2
 - **TFTP** — serves PXE boot files (pxelinux, iPXE)
 - **LVM** — flexible storage for VM disks
 
-## 1. Rocky Linux Installation
+## 1. openSUSE Leap 15.5 Installation
 
-Boot `nuc-00` from the Rocky Linux 9 minimal ISO. Use the installer TUI or a kickstart file.
+Boot `nuc-00` from the openSUSE Leap 15.5 ISO. Use the YaST installer TUI or an AutoYaST profile for automated installation.
 
 Partition layout:
 
@@ -50,26 +50,25 @@ ping 10.10.12.1
 
 ```bash
 # Update system
-dnf update -y
+zypper --non-interactive update
 
 # Install required packages
-dnf install -y \
+zypper install -y \
   qemu-kvm \
   libvirt \
   virt-install \
   virt-manager \
   bridge-utils \
-  httpd \
-  tftp-server \
+  apache2 \
+  tftp \
   syslinux \
   lvm2 \
   git \
   vim \
-  tmux \
-  policycoreutils-python-utils
+  tmux
 
 # Enable services
-systemctl enable --now libvirtd httpd tftp.socket
+systemctl enable --now libvirtd apache2 tftp.socket
 
 # Allow HTTP through firewall
 firewall-cmd --permanent --add-service=http
@@ -112,10 +111,6 @@ mkdir -p /var/www/html/harvester
 mount -o loop /path/to/harvester-v1.7.1-amd64.iso /mnt/harvester-iso
 cp -r /mnt/harvester-iso/* /var/www/html/harvester/
 umount /mnt/harvester-iso
-
-# Set SELinux context
-semanage fcontext -a -t httpd_sys_content_t "/var/www/html/harvester(/.*)?"
-restorecon -Rv /var/www/html/harvester
 
 # Test HTTP access
 curl http://10.10.12.10/harvester/

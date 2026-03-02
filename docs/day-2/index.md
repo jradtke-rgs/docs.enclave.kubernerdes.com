@@ -43,7 +43,7 @@ Treat the enclave like production:
 
 | Component | Cadence | Method |
 |-----------|---------|--------|
-| Rocky Linux (nuc-00, VMs) | Monthly | `dnf update -y` via Ansible |
+| openSUSE Leap 15.5 (nuc-00, VMs) | Monthly | `zypper update -y` via Ansible |
 | Harvester | Per release | Harvester UI upgrade wizard |
 | Rancher Manager | Per release | `helm upgrade` |
 | K3s (on rancher-mgr) | With Rancher | Auto or manual |

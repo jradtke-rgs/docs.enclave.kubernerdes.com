@@ -13,11 +13,12 @@ Day 1 is the initial deployment phase — turning bare-metal hardware into a run
 
 ```
 1. Admin Host (nuc-00)
-   └── OS install, KVM, Apache, TFTP, LVM, SSH keys
+   └── OS install, KVM, Apache, TFTP, HTTP/S (ISOS, etc..), LVM, SSH keys
 
 2. Infrastructure VMs (on nuc-00)
-   ├── infra-01: ISC DHCP + BIND DNS
-   └── infra-02: HAProxy + Keepalived
+   ├── infra-01: ISC DHCP + BIND DNS (pirmary)
+   └── infra-02: BIND DNS (replica) + bastion 
+   └── infra-03: HAProxy + Keepalived
 
 3. Harvester Cluster (nuc-01/02/03)
    └── PXE boot → automated install → cluster join
@@ -41,7 +42,7 @@ Total Day 1 build time: approximately **3–4 hours** for a first-time deploymen
 
 Before starting Day 1:
 
-- All Day 0 checklist items complete (see [Software Prerequisites](../day-0/software-prerequisites))
+- All Day 0 checklist items complete (see [Prerequisites](../day-0/prerequisites))
 - All 4 NUCs powered on and network cables connected to switch
 - ISO images available on your workstation
 - SSH key pair ready

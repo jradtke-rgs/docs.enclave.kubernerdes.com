@@ -30,7 +30,7 @@ In the Harvester UI (`https://10.10.12.100`), create three VMs with the followin
 | Names | `rancher-01`, `rancher-02`, `rancher-03` |
 | CPU | 4 vCPUs each |
 | Memory | 8 GB each |
-| Image | Rocky Linux 9 (upload ISO first) |
+| Image | openSUSE Leap 15.5 (upload ISO first) |
 | Disk | 60 GB (Longhorn) each |
 | Network | `default` (management) |
 | IPs | `10.10.12.211`, `10.10.12.212`, `10.10.12.213` (static) |
