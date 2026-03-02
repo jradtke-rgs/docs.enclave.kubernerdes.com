@@ -13,9 +13,9 @@ Day 0 is about making decisions before any hardware is racked or software instal
 
 | Topic | Document |
 |-------|----------|
-| Hardware bill of materials, NUC specs, cabling | [Hardware](./hardware) |
-| IP address scheme, DNS zones, DHCP scopes, VIPs | [Network Planning](./network-planning) |
-| OS images, tooling downloads, offline prep | [Prerequisites](./prerequisites) |
+| Hardware bill of materials, NUC specs, cabling | [Hardware](./hardware.md) |
+| IP address scheme, DNS zones, DHCP scopes, VIPs | [Network Planning](./network-planning.md) |
+| OS images, tooling downloads, offline prep | [Prerequisites](./prerequisites.md) |
 
 ## Key Design Decisions
 
