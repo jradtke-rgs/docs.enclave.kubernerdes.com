@@ -8,6 +8,7 @@ sidebar_position: 2
 # Hardware
 
 ## Bill of Materials
+NOTE: for the most accurate/up-to-date BOM, review the [Hardware Overvew](https://github.com/jradtke-rgs/enclave.kubernerdes.com/blob/main/Hardware.md)
 
 | Qty | Item | Role |
 |-----|------|------|
