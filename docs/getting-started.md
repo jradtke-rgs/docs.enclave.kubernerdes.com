@@ -56,17 +56,17 @@ The enclave is designed to boot from bare metal with PXE, operate without intern
 | Host | IP | Role |
 |------|----|------|
 | nuc-00 | `10.10.12.10` | Admin host: KVM, PXE (Apache/TFTP), infra VMs |
-| nuc-01 | `10.10.12.101` | Harvester node 1 |
-| nuc-02 | `10.10.12.102` | Harvester node 2 |
-| nuc-03 | `10.10.12.103` | Harvester node 3 |
 | nuc-00-01 | `10.10.12.8` | DHCP (ISC), DNS primary (BIND) |
 | nuc-00-02 | `10.10.12.9` | DNS secondary (BIND) |
 | nuc-00-03 | `10.10.12.93` | HAProxy, Keepalived |
+| harvester-edge (VIP) | `10.10.12.100` | Harvester API/UI virtual IP |
+| nuc-01 | `10.10.12.101` | Harvester node 1 |
+| nuc-02 | `10.10.12.102` | Harvester node 2 |
+| nuc-03 | `10.10.12.103` | Harvester node 3 |
+| rancher (VIP) | `10.10.12.210` | Keepalived VIP for Rancher Manager |
 | rancher-01 | `10.10.12.211` | Rancher Manager K3s node 1 (Harvester VM) |
 | rancher-02 | `10.10.12.212` | Rancher Manager K3s node 2 (Harvester VM) |
 | rancher-03 | `10.10.12.213` | Rancher Manager K3s node 3 (Harvester VM) |
-| harvester-edge (VIP) | `10.10.12.100` | Harvester API/UI virtual IP |
-| rancher (VIP) | `10.10.12.210` | Keepalived VIP for Rancher Manager |
 
 ## Day 0/1/2 Framework
 
