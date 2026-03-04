@@ -202,4 +202,28 @@ If the secondary NVMe (`/dev/nvme0n1`) was not automatically provisioned:
 
 Longhorn will format and add these disks to its storage pool.
 
+## Post Install Config
+
+### Create Networking for Virtual Machines (optional - requires an additional NIC on each host)
+In the Harvester UI, expand Networks and click on "Cluster Network Configuration".  Click "Create a Cluster Network" - I name mine: clstrnet-vms (12 char limit), Click "Create"
+Now you will see "Cluster Network: clstrnet-vms" - and click on "Create Network Configuration".
+I name mine: netconf-vms - select Uplink on the left and the appropriate NIC in the middle pane. (you can choose bond options, etc... here)
+
+Next, click on "Virtual Machine Networks", which I name: vmnet-vms and select "UntaggedNetwork" (this may be different for your environment) - followed by selecting the Cluster Network we created earlier "clstrnet-vms".  Click Create.  You're done!
+
+### Uplaod Image(s) for VM Operating System
+In this case we will use the sl-micro.x86_64-6.1-base-qcow-gm.qcow2 image.
+(first grab the URL to the image which is hosted on your web server)
+In the Harvester UI, click on "Images" on the left and then "Create" on the right.  I generally let the name autopopulate - just paste that URL in the "URL" field and the name will get updated.
+
+### ssh key
+Copy the ssh **public** key you wish to use to Harvester
+In the Harvester UI, expand "Advanced" on the left and click on "SSH Keys" (the key should start with "ssh-rsa" or "ssh-ecdsa" and may end with an email address or username
+
+### Cloud Configuration Templates (cloud-init)
+For naming these, I tend to name them after the OS I intend to use them with (SL-micro vs SLES, for example)
+
+In the Harvester UI, expand "Advanced" on the left and click on "Cloud Configuration Templates".  Click "Create" and provide a name, then paste your cloud-init in the box under "User Data"
+ProTip:  There are 2 types here - User Data and Network Data.  I tend to just put everything in User Data - but you figure out what is best for you.
+
 Proceed to [Rancher Manager](./rancher-manager.md).
