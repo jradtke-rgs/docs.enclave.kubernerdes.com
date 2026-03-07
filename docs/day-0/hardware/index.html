@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Hardware | Kubernerdes Enclave</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://docs.enclave.kubernerdes.com/docs/day-0/hardware"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Hardware | Kubernerdes Enclave"><meta data-rh="true" name="description" content="Bill of Materials"><meta data-rh="true" property="og:description" content="Bill of Materials"><link data-rh="true" rel="icon" href="/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://docs.enclave.kubernerdes.com/docs/day-0/hardware"><link data-rh="true" rel="alternate" href="https://docs.enclave.kubernerdes.com/docs/day-0/hardware" hreflang="en"><link data-rh="true" rel="alternate" href="https://docs.enclave.kubernerdes.com/docs/day-0/hardware" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Day 0 — Design","item":"https://docs.enclave.kubernerdes.com/docs/day-0/"},{"@type":"ListItem","position":2,"name":"Hardware","item":"https://docs.enclave.kubernerdes.com/docs/day-0/hardware"}]}</script><link rel="stylesheet" href="/assets/css/styles.4dc2e6cd.css">
-<script src="/assets/js/runtime~main.7300506c.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.cd4615f5.js" defer="defer"></script>
 <script src="/assets/js/main.d00af574.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -32,11 +32,11 @@
 <ol>
 <li class=""><strong>Boot order:</strong> Network (PXE) first, SSD/NVMe second</li>
 <li class=""><strong>Secure Boot:</strong> Disabled (required for Harvester PXE boot)</li>
-<li class=""><strong>VT-x / VT-d:</strong> Enabled (required for KVM on nuc-00)</li>
+<li class=""><strong>VT-x / VT-d:</strong> Enabled (required for KVM and KubeVirt on the nucs)</li>
 <li class=""><strong>Wake-on-LAN:</strong> Enabled (optional, useful for remote power-on)</li>
 <li class=""><strong>Auto power-on:</strong> Enabled after power loss (optional, for recovery)</li>
 </ol>
-<p>Access the BIOS via <strong>F2</strong> during POST, or <strong>F7</strong> for the one-time boot menu.</p>
+<p>Access the BIOS via <strong>F2</strong> during POST, or <strong>F7</strong> for the one-time boot menu, <strong>F12</strong> for Network Boot.</p>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="cabling-notes">Cabling Notes<a href="#cabling-notes" class="hash-link" aria-label="Direct link to Cabling Notes" title="Direct link to Cabling Notes" translate="no">​</a></h2>
 <ul>
 <li class="">Label each cable at both ends (e.g., <code>nuc-00 ↔ sw-p1</code>)</li>
