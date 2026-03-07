@@ -7,7 +7,7 @@ sidebar_position: 5
 
 # Rancher Manager
 
-Rancher Manager is deployed as a 3-node K3s HA cluster, running as VMs inside the Harvester cluster. It provides the central Kubernetes management UI and multi-cluster fleet management.
+Rancher Manager is deployed as a 3-node RKE2 HA cluster, running as VMs inside the Harvester cluster. It provides the central Kubernetes management UI and multi-cluster fleet management.
 
 ## Architecture
 
@@ -18,24 +18,40 @@ Harvester cluster
 └── rancher-03 VM (10.10.12.213)  ─┘
     ├── cert-manager (TLS certificates)
     └── Rancher Manager (Helm chart)
-        └── Exposed via: 10.10.12.210 (Keepalived VIP → HAProxy on nuc-00-03)
+        └── Available via: 10.10.12.210 (Keepalived VIP → HAProxy on nuc-00-03)
 ```
 
 ## Step 1: Create the Rancher Manager VMs
 
-In the Harvester UI (`https://10.10.12.100`), create three VMs with the following configuration:
+ProTip(s):  
+* I create a separate namespace for each of my clusters - this allows me to destroy the single namespace and remove ALL the resources - as opposed to trying to sort through resources from many different workloads in a shared namespace.  
+*You can create multiple VMs with the same "basename".  Enter "rancher", for example, and select 3 - you end up with rancher-01/02/03.  Slick
+
+In the Harvester UI (`https://10.10.12.100`), you will create three VMs with the following configuration (see instructions after this table)
 
 | Setting | Value |
 |---------|-------|
 | Names | `rancher-01`, `rancher-02`, `rancher-03` |
 | CPU | 4 vCPUs each |
 | Memory | 8 GB each |
-| Image | openSUSE Leap 15.5 (upload ISO first) |
+| Image | sl-micro-6.1  |
 | Disk | 60 GB (Longhorn) each |
 | Network | `default` (management) |
 | IPs | `10.10.12.211`, `10.10.12.212`, `10.10.12.213` (static) |
 
+Click "Virtual Machines" then Create.
+Click "Multiple Instance"
+Update the namespace (I use "vms-rancher" which I created before I started this task)
+Enter "rancher" under "Name Prefix" and count "3"
+Update CPU = 4, Memory = 8 - select SSH key you created earlier
+Click "Volumes" on the left | under image, select your sl-micro image (I increase the size to 50GB)
+Click "Network" on the left | selec the Virtual Machine network we create previously
+Click "Advanced Options" and under Cloud Configuration | User Data: select the Cloud Configuration Template we uploaded previously
+Click "Create" at the bottom - this will start the deployment and take you to a screen which shows your 3 VMs - eventually you will see the IP addresses populate in the Dashboard.  You're good to go.  You can now SSH to the nodes using the SSH key (and user sles, in my case)
+
+
 Use cloud-init user data to set static IPs at VM creation time. Example for `rancher-01`:
+
 
 ```yaml
 #cloud-config
@@ -187,15 +203,24 @@ curl -k https://10.10.12.210/ping
 # Expected: {"type":"ping"}
 ```
 
+Enable Extensions
+Click the puzzle piece bottom left
+Click the kebab (upper right) and Manage Repositories
+
+## Step 5.a - disable TLS (if needed)
+Click the globe on left hand pane | Settings | agent-tls-mode - click the kebab menu on the right and select Edit Settings. From the pull down, select "System Store" and click "Save"
+
+
 ## Step 6: Import Harvester Cluster into Rancher
 
 1. Open Rancher UI: `https://rancher.enclave.kubernerdes.com` (or `https://10.10.12.210`)
 2. Complete the initial setup (set admin password)
-3. Navigate to **Cluster Management** → **Import Existing**
-4. Select **Generic** cluster type
-5. Name: `harvester-edge`
-6. Copy the `kubectl apply` command shown
-7. Run it against the Harvester cluster:
+3. Click on the Harvester Icon on the left hand pane (icon below the sailboat) and click "Install"
+4. Navigate to **Cluster Management** → **Import Existing**
+5. Select **Generic** cluster type
+6. Name: `harvester-edge`
+7. Copy the `kubectl apply` command shown
+8. Run it against the Harvester cluster:
 
 ```bash
 kubectl --kubeconfig ~/.kube/harvester-config apply -f <registration-url>

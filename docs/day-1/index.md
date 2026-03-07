@@ -34,7 +34,8 @@ Day 1 is the initial deployment phase — turning bare-metal hardware into a run
 | 1. Admin host setup | [Admin Host](./admin-host.md) | 45–60 min |
 | 2. Infrastructure VMs | [Infrastructure VMs](./infrastructure-vms.md) | 30–45 min |
 | 3. Harvester cluster | [Harvester Cluster](./harvester-cluster.md) | 60–90 min |
-| 4. Rancher Manager | [Rancher Manager](./rancher-manager.md) | 30–45 min |
+| 4. Housekeeping Tasks| [Housekeeping](./housekeeping.md) | 10–15 min |
+| 5. Rancher Manager | [Rancher Manager](./rancher-manager.md) | 30–45 min |
 
 Total Day 1 build time: approximately **3–4 hours** for a first-time deployment, less than 2 hours for subsequent runs with the automation in place.
 

@@ -86,11 +86,11 @@ Apply the following BIOS settings to each NUC before OS installation:
 
 1. **Boot order:** Network (PXE) first, SSD/NVMe second
 2. **Secure Boot:** Disabled (required for Harvester PXE boot)
-3. **VT-x / VT-d:** Enabled (required for KVM on nuc-00)
+3. **VT-x / VT-d:** Enabled (required for KVM and KubeVirt on the nucs)
 4. **Wake-on-LAN:** Enabled (optional, useful for remote power-on)
 5. **Auto power-on:** Enabled after power loss (optional, for recovery)
 
-Access the BIOS via **F2** during POST, or **F7** for the one-time boot menu.
+Access the BIOS via **F2** during POST, or **F7** for the one-time boot menu, **F12** for Network Boot.
 
 ## Cabling Notes
 
