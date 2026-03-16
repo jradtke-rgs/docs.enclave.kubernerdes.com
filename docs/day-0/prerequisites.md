@@ -140,20 +140,30 @@ helm pull jetstack/cert-manager --version v1.14.0 --destination ./helm-cache/
 helm pull rancher-prime/rancher --destination ./helm-cache/
 ```
 
+## Carbide License & Credentials
+
+Contact your Rancher Government Solutions team to request your Carbide license key and registry credentials (`HAULER_USER` / `HAULER_PASSWORD`). You'll need these for the [Hauler & Carbide Setup](../day-1/hauler.md) step.
+
+Registry endpoint: `rgcrprod.azurecr.us`
+
 ## Container Image Pre-Pull (Air Gap)
 
-For fully air-gapped deployments, use Hauler or `cosign` to mirror RGS Carbide images to a local registry. The `hauler` tool is the recommended approach:
+For air-gapped deployments, use Hauler to mirror RGS Carbide images to a local registry on `nuc-00`. Full setup is covered in [Hauler & Carbide Setup](../day-1/hauler.md). The products and versions used in this enclave:
+
+| Product | Version |
+|---------|---------|
+| Rancher Manager | v2.13.3 |
+| RKE2 | v1.35.2+rke2r1 |
+| NeuVector | v5.4.9 |
 
 ```bash
 # Install hauler
 curl -sfL https://get.hauler.dev | bash
 
-# Mirror Rancher images
-hauler store sync --files rancher-images.txt
-hauler store serve
+# Authenticate and sync products
+hauler login rgcrprod.azurecr.us -u $HAULER_USER -p $HAULER_PASSWORD
+hauler store sync --products rancher=v2.13.3 --platform linux/amd64
 ```
-
-Contact RGS for the Carbide image list and credentials.
 
 ## Day 0 Checklist
 
@@ -166,3 +176,5 @@ Contact RGS for the Carbide image list and credentials.
 - [ ] PXE boot scripts drafted with correct IPs
 - [ ] IP address plan finalized (see [Network Planning](./network-planning.md))
 - [ ] Hardware assembled and powered on (see [Hardware](./hardware.md))
+- [ ] Carbide license and registry credentials obtained from RGS
+- [ ] Hauler tool installed on nuc-00 (or workstation for pre-staging)

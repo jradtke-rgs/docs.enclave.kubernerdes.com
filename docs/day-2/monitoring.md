@@ -13,6 +13,7 @@ sidebar_position: 2
 |-----------|-----|---------|
 | Harvester UI | https://10.10.12.100 | Cluster nodes, VMs, storage, networking |
 | Rancher Manager | https://10.10.12.210 | Multi-cluster overview, workload health |
+| SUSE Observability | https://10.10.12.220 | Full-stack topology, metrics, alerts |
 | HAProxy Stats | http://10.10.12.93:9000/stats | Load balancer backend health, traffic |
 | Longhorn UI | https://10.10.12.100 → Storage → Longhorn | Volume health, replica status |
 
@@ -137,24 +138,38 @@ ETCDCTL_API=3 etcdctl \
 
 ```bash
 # Check all cert-manager certificates
-kubectl --kubeconfig ~/.kube/rancher-k3s-config \
+kubectl --kubeconfig ~/.kube/enclave-rancher.kubeconfig \
   get certificates -A
 
 # Check expiry
-kubectl --kubeconfig ~/.kube/rancher-k3s-config \
+kubectl --kubeconfig ~/.kube/enclave-rancher.kubeconfig \
   get certificates -A -o \
   custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,READY:.status.conditions[-1].status,EXPIRY:.status.notAfter'
 ```
 
 Certificates managed by cert-manager renew automatically at 2/3 of their lifetime. If a certificate is stuck `NotReady`, see [Troubleshooting](./troubleshooting.md#certificate-issues).
 
+## SUSE Observability
+
+SUSE Observability provides topology-based monitoring across all enclave clusters. Access it at `https://observability.enclave.kubernerdes.com` (VIP `10.10.12.220`).
+
+Key views:
+
+- **Topology** — live map of all services and their relationships across clusters
+- **Monitors** — configurable health checks with alerting thresholds
+- **Metrics** — time-series data from all registered cluster agents
+- **Events** — Kubernetes events and change history
+
+For installation and cluster agent registration, see [Observability](./observability.md).
+
 ## Alerting
 
 Basic alerting can be configured via:
 
-1. **Rancher Monitoring Alertmanager** — email/Slack/PagerDuty alerts for pod failures, node pressure
-2. **Keepalived** — log to syslog when VIP transitions (visible in `journalctl -u keepalived`)
-3. **HAProxy** — log backend state changes to syslog
+1. **SUSE Observability Monitors** — topology-aware alerts for service health, pod failures, node pressure
+2. **Rancher Monitoring Alertmanager** — email/Slack/PagerDuty alerts (if the rancher-monitoring chart is deployed)
+3. **Keepalived** — log to syslog when VIP transitions (visible in `journalctl -u keepalived`)
+4. **HAProxy** — log backend state changes to syslog
 
 ```bash
 # Watch HAProxy state changes in real time (on nuc-00-03)

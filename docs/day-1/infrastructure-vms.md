@@ -185,24 +185,54 @@ systemctl enable --now named
 
 ## nuc-00-03: HAProxy + Keepalived
 
+HAProxy on `nuc-00-03` is the single load balancer for all enclave services. It listens on four Keepalived-managed VIPs:
+
+| VIP | Purpose |
+|-----|---------|
+| `10.10.12.193` | OpenWebUI (port 12000) and Ollama API (port 11434) — spark-e |
+| `10.10.12.210` | Rancher Manager cluster |
+| `10.10.12.220` | SUSE Observability cluster |
+| `10.10.12.230` | Enclave Applications cluster |
+
 ### HAProxy Configuration
 
 ```bash
 zypper install -y haproxy keepalived
 
-# /etc/haproxy/haproxy.cfg
 cat > /etc/haproxy/haproxy.cfg << 'EOF'
 global
-  log stdout format raw local0
-  maxconn 4096
+  log 127.0.0.1:514 local0
+  maxconn 32768
+  chroot /var/lib/haproxy
+  user haproxy
+  group haproxy
+  daemon
+  stats socket /var/lib/haproxy/stats user haproxy group haproxy mode 0640 level operator
+  tune.bufsize 32768
+  tune.ssl.default-dh-param 2048
+  ssl-default-bind-ciphers ALL:!aNULL:!eNULL:!EXPORT:!DES:!3DES:!MD5:!PSK:!RC4:!ADH:!LOW@STRENGTH
+  ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
 
 defaults
   log     global
-  mode    tcp
-  option  tcplog
-  timeout connect 5s
-  timeout client  30s
-  timeout server  30s
+  mode    http
+  option  log-health-checks
+  option  log-separate-errors
+  option  dontlog-normal
+  option  dontlognull
+  option  httplog
+  option  socket-stats
+  retries 3
+  option  redispatch
+  maxconn 10000
+  timeout connect     5s
+  timeout client     50s
+  timeout server    450s
+
+# Userlist for Ollama API Basic Authentication
+userlist ollama_users
+  user admin password $5$<hashed-password>
+  user apiuser password $5$<hashed-password>
 
 #---------------------------------------------------------------------
 # Stats page
@@ -216,37 +246,186 @@ listen stats
   stats auth admin:rancher
 
 #---------------------------------------------------------------------
-# Rancher Manager VIP (10.10.12.210)
+# OpenWebUI — spark-e (10.10.12.193)
+#---------------------------------------------------------------------
+frontend openwebui_frontend
+  bind 10.10.12.193:12000 ssl \
+    crt /etc/haproxy/certs/spark-e.enclave.kubernerdes.com.pem \
+    alpn h2,http/1.1
+  default_backend spark-e_owui_backend
+
+backend spark-e_owui_backend
+  balance roundrobin
+  server spark-e 10.10.12.251:12000 check
+
+#---------------------------------------------------------------------
+# Ollama API — spark-e (10.10.12.193), Basic Auth required
+#---------------------------------------------------------------------
+frontend ollama_frontend
+  bind 10.10.12.193:11434 ssl \
+    crt /etc/haproxy/certs/spark-e.enclave.kubernerdes.com.pem \
+    alpn h2,http/1.1
+  mode http
+  acl auth_ok http_auth(ollama_users)
+  http-response set-header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  http-request auth realm "Ollama API" if !auth_ok
+  default_backend spark-e_ollama_backend
+
+backend spark-e_ollama_backend
+  balance roundrobin
+  server spark-e 10.10.12.251:11434 check
+
+#---------------------------------------------------------------------
+# Rancher Manager (10.10.12.210)
 #---------------------------------------------------------------------
 frontend rancher-http
   bind 10.10.12.210:80
-  default_backend rancher-nodes-80
+  mode tcp
+  default_backend rancher-http-backend
 
-backend rancher-nodes-80
+backend rancher-http-backend
+  mode tcp
+  balance roundrobin
   option tcp-check
-  server rancher-01 10.10.12.211:80 check
-  server rancher-02 10.10.12.212:80 check
-  server rancher-03 10.10.12.213:80 check
+  server rancher-01 10.10.12.211:80 check fall 3 rise 2
+  server rancher-02 10.10.12.212:80 check fall 3 rise 2
+  server rancher-03 10.10.12.213:80 check fall 3 rise 2
 
 frontend rancher-https
   bind 10.10.12.210:443
-  default_backend rancher-nodes-443
+  mode tcp
+  default_backend rancher-https-backend
 
-backend rancher-nodes-443
+backend rancher-https-backend
+  mode tcp
+  balance roundrobin
   option tcp-check
-  server rancher-01 10.10.12.211:443 check
-  server rancher-02 10.10.12.212:443 check
-  server rancher-03 10.10.12.213:443 check
+  server rancher-01 10.10.12.211:443 check fall 3 rise 2
+  server rancher-02 10.10.12.212:443 check fall 3 rise 2
+  server rancher-03 10.10.12.213:443 check fall 3 rise 2
 
-frontend rancher-api
+frontend rancher-k8s-api
   bind 10.10.12.210:6443
-  default_backend rancher-nodes-6443
+  mode tcp
+  default_backend rancher-k8s-api-backend
 
-backend rancher-nodes-6443
+backend rancher-k8s-api-backend
+  mode tcp
+  balance roundrobin
   option tcp-check
-  server rancher-01 10.10.12.211:6443 check
-  server rancher-02 10.10.12.212:6443 check
-  server rancher-03 10.10.12.213:6443 check
+  server rancher-01 10.10.12.211:6443 check fall 3 rise 2
+  server rancher-02 10.10.12.212:6443 check fall 3 rise 2
+  server rancher-03 10.10.12.213:6443 check fall 3 rise 2
+
+frontend rancher-k8s-certs
+  bind 10.10.12.210:9345
+  mode tcp
+  default_backend rancher-k8s-certs-backend
+
+backend rancher-k8s-certs-backend
+  mode tcp
+  balance roundrobin
+  option tcp-check
+  server rancher-01 10.10.12.211:9345 check fall 3 rise 2
+  server rancher-02 10.10.12.212:9345 check fall 3 rise 2
+  server rancher-03 10.10.12.213:9345 check fall 3 rise 2
+
+#---------------------------------------------------------------------
+# SUSE Observability cluster (10.10.12.220)
+#---------------------------------------------------------------------
+frontend observability-http
+  bind 10.10.12.220:80
+  mode tcp
+  default_backend observability-http-backend
+
+backend observability-http-backend
+  mode tcp
+  balance roundrobin
+  option tcp-check
+  server observability-01 10.10.15.37:80 check fall 3 rise 2
+  server observability-02 10.10.15.38:80 check fall 3 rise 2
+  server observability-03 10.10.15.39:80 check fall 3 rise 2
+
+frontend observability-https
+  bind 10.10.12.220:443
+  mode tcp
+  default_backend observability-https-backend
+
+backend observability-https-backend
+  mode tcp
+  balance roundrobin
+  option tcp-check
+  server observability-01 10.10.15.37:443 check fall 3 rise 2
+  server observability-02 10.10.15.38:443 check fall 3 rise 2
+  server observability-03 10.10.15.39:443 check fall 3 rise 2
+
+frontend observability-k8s-api
+  bind 10.10.12.220:6443
+  mode tcp
+  default_backend observability-k8s-api-backend
+
+backend observability-k8s-api-backend
+  mode tcp
+  balance roundrobin
+  option tcp-check
+  server observability-01 10.10.15.37:6443 check fall 3 rise 2
+  server observability-02 10.10.15.38:6443 check fall 3 rise 2
+  server observability-03 10.10.15.39:6443 check fall 3 rise 2
+
+frontend observability-k8s-certs
+  bind 10.10.12.220:9345
+  mode tcp
+  default_backend observability-k8s-certs-backend
+
+backend observability-k8s-certs-backend
+  mode tcp
+  balance roundrobin
+  option tcp-check
+  server observability-01 10.10.15.37:9345 check fall 3 rise 2
+  server observability-02 10.10.15.38:9345 check fall 3 rise 2
+  server observability-03 10.10.15.39:9345 check fall 3 rise 2
+
+#---------------------------------------------------------------------
+# Enclave Applications cluster (10.10.12.230)
+#---------------------------------------------------------------------
+frontend enclaveapps-http
+  bind 10.10.12.230:80
+  mode tcp
+  default_backend enclaveapps-http-backend
+
+backend enclaveapps-http-backend
+  mode tcp
+  balance roundrobin
+  option tcp-check
+  server enclaveapps-01 10.10.15.43:80 check fall 3 rise 2
+  server enclaveapps-02 10.10.15.44:80 check fall 3 rise 2
+  server enclaveapps-03 10.10.15.45:80 check fall 3 rise 2
+
+frontend enclaveapps-https
+  bind 10.10.12.230:443
+  mode tcp
+  default_backend enclaveapps-https-backend
+
+backend enclaveapps-https-backend
+  mode tcp
+  balance roundrobin
+  option tcp-check
+  server enclaveapps-01 10.10.15.43:443 check fall 3 rise 2
+  server enclaveapps-02 10.10.15.44:443 check fall 3 rise 2
+  server enclaveapps-03 10.10.15.45:443 check fall 3 rise 2
+
+frontend enclaveapps-k8s-api
+  bind 10.10.12.230:6443
+  mode tcp
+  default_backend enclaveapps-k8s-api-backend
+
+backend enclaveapps-k8s-api-backend
+  mode tcp
+  balance roundrobin
+  option tcp-check
+  server enclaveapps-01 10.10.15.43:6443 check fall 3 rise 2
+  server enclaveapps-02 10.10.15.44:6443 check fall 3 rise 2
+  server enclaveapps-03 10.10.15.45:6443 check fall 3 rise 2
 EOF
 
 systemctl enable --now haproxy
@@ -254,15 +433,15 @@ systemctl enable --now haproxy
 
 ### Keepalived Configuration
 
-Keepalived manages two VIPs on `nuc-00-03`. It is the MASTER for both.
+Keepalived manages four VIPs on `nuc-00-03`.
 
 ```bash
-# /etc/keepalived/keepalived.conf
 cat > /etc/keepalived/keepalived.conf << 'EOF'
 global_defs {
   router_id nuc-00-03
 }
 
+# spark-e (OpenWebUI + Ollama)
 vrrp_instance VI_HADRIAN {
   state MASTER
   interface eth0
@@ -278,6 +457,7 @@ vrrp_instance VI_HADRIAN {
   }
 }
 
+# Rancher Manager
 vrrp_instance VI_RANCHER {
   state MASTER
   interface eth0
@@ -290,6 +470,38 @@ vrrp_instance VI_RANCHER {
   }
   virtual_ipaddress {
     10.10.12.210/22
+  }
+}
+
+# SUSE Observability
+vrrp_instance VI_OBSERVABILITY {
+  state MASTER
+  interface eth0
+  virtual_router_id 220
+  priority 100
+  advert_int 1
+  authentication {
+    auth_type PASS
+    auth_pass rancher
+  }
+  virtual_ipaddress {
+    10.10.12.220/22
+  }
+}
+
+# Enclave Applications
+vrrp_instance VI_APPS {
+  state MASTER
+  interface eth0
+  virtual_router_id 230
+  priority 100
+  advert_int 1
+  authentication {
+    auth_type PASS
+    auth_pass rancher
+  }
+  virtual_ipaddress {
+    10.10.12.230/22
   }
 }
 EOF
@@ -329,9 +541,8 @@ dig @10.10.12.9 nuc-00.enclave.kubernerdes.com
 systemctl is-active haproxy
 curl http://10.10.12.93:9000/stats
 
-# VIPs are assigned
-ip addr show | grep 10.10.12.193
-ip addr show | grep 10.10.12.210
+# All four VIPs assigned
+ip addr show | grep -E "10.10.12.(193|210|220|230)"
 
 # Keepalived running
 systemctl is-active keepalived
@@ -344,4 +555,4 @@ nmcli connection modify eth0 ipv4.dns "10.10.12.8 10.10.12.9"
 nmcli connection up eth0
 ```
 
-Proceed to [Harvester Cluster](./harvester-cluster.md).
+Proceed to [Hauler & Carbide Setup](./hauler.md).

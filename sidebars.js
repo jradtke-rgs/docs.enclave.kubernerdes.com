@@ -25,8 +25,10 @@ const sidebars = {
       items: [
         'day-1/admin-host',
         'day-1/infrastructure-vms',
+        'day-1/hauler',
         'day-1/harvester-cluster',
         'day-1/rancher-manager',
+        'day-1/housekeeping',
       ],
     },
     {
@@ -35,6 +37,8 @@ const sidebars = {
       link: {type: 'doc', id: 'day-2/day-2'},
       items: [
         'day-2/monitoring',
+        'day-2/observability',
+        'day-2/security',
         'day-2/backup-maintenance',
         'day-2/troubleshooting',
       ],

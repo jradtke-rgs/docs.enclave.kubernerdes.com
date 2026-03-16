@@ -16,7 +16,7 @@ sidebar_position: 3
 | Harvester VM volumes | Longhorn snapshots + backup | Daily | NFS backup target |
 | Harvester cluster config | `kubectl get -o yaml` export | Weekly | Git |
 | Rancher config | Helm values + kubectl export | On change | Git |
-| etcd snapshot | K3s auto-snapshot | Daily | Local + NFS |
+| etcd snapshot | RKE2 auto-snapshot | Daily | Local + NFS |
 
 ## `backup_hosts.sh` Script
 
@@ -161,29 +161,30 @@ spec:
 EOF
 ```
 
-## K3s etcd Snapshots (Rancher Manager)
+## RKE2 etcd Snapshots (Rancher Manager)
 
-K3s on the Rancher cluster automatically takes etcd snapshots. Verify and manage:
+RKE2 on the Rancher cluster automatically takes etcd snapshots. Verify and manage:
 
 ```bash
-# On rancher-01 (or any Rancher K3s node)
+# On rancher-01 (or any Rancher RKE2 node)
 # List local snapshots
-ls -lh /var/lib/rancher/k3s/server/db/snapshots/
+ls -lh /var/lib/rancher/rke2/server/db/snapshots/
 
-# K3s config for snapshot schedule (in /etc/rancher/k3s/config.yaml)
-cat << 'EOF' > /etc/rancher/k3s/config.yaml
+# RKE2 config for snapshot schedule (in /etc/rancher/rke2/config.yaml)
+# Add these lines to the existing config.yaml
+cat << 'EOF' >> /etc/rancher/rke2/config.yaml
 etcd-snapshot-schedule-cron: "0 2 * * *"
 etcd-snapshot-retain: 7
-etcd-snapshot-dir: /var/lib/rancher/k3s/server/db/snapshots
+etcd-snapshot-dir: /var/lib/rancher/rke2/server/db/snapshots
 EOF
 
-systemctl restart k3s
+systemctl restart rke2-server
 ```
 
 Copy snapshots off the VM:
 
 ```bash
-scp mansible@10.10.12.211:/var/lib/rancher/k3s/server/db/snapshots/\* \
+scp sles@10.10.12.211:/var/lib/rancher/rke2/server/db/snapshots/\* \
   /mnt/backup/enclave/rancher-etcd/
 ```
 
@@ -217,17 +218,17 @@ EOF
 helm repo update
 
 # Check current version
-helm list -n cattle-system --kubeconfig ~/.kube/rancher-k3s-config
+helm list -n cattle-system --kubeconfig ~/.kube/enclave-rancher.kubeconfig
 
 # Upgrade
-helm upgrade rancher rancher-prime/rancher \
+helm upgrade rancher rancher-latest/rancher \
   --namespace cattle-system \
-  --kubeconfig ~/.kube/rancher-k3s-config \
+  --kubeconfig ~/.kube/enclave-rancher.kubeconfig \
   --reuse-values \
   --version <new-version>
 
 # Monitor rollout
-kubectl --kubeconfig ~/.kube/rancher-k3s-config \
+kubectl --kubeconfig ~/.kube/enclave-rancher.kubeconfig \
   rollout status deployment rancher -n cattle-system
 ```
 
